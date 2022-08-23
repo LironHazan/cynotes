@@ -1,2 +1,2 @@
 # cynotes
-"mocking git" in golang
+Save encrypted files revisions 
