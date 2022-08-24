@@ -32,6 +32,7 @@ func Commit(filepath string, passphrase string) {
 
 }
 
+// todo - implement view file
 //func Run(passphrase string, filename string) error {
 //	bytes, err := os.ReadFile(filepath)
 //	if err != nil {
