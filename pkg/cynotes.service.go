@@ -5,7 +5,9 @@ import (
 	fsutils "cynotes/pkg/fs"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 func Commit(filepath string, passphrase string) {
@@ -30,6 +32,21 @@ func Commit(filepath string, passphrase string) {
 		fmt.Printf("Failed reading data from file: %s", err)
 	}
 
+}
+
+func List() {
+	// todo: model: notesMap := make(map[string][]string)
+
+	visit := func(path string, di fs.DirEntry, err error) error {
+		fmt.Println(path)
+		return nil
+	}
+
+	path, _ := fsutils.GetCYNotesPath()
+	err := filepath.WalkDir(path, visit)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 // todo - implement view file

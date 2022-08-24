@@ -73,6 +73,7 @@ func DecryptAES(key, data []byte) ([]byte, error) {
 }
 
 // DeriveKey key derivation function
+// todo: replace with something like https://pkg.go.dev/golang.org/x/crypto/hkdf
 func DeriveKey(password, salt []byte) ([]byte, []byte, error) {
 	if salt == nil {
 		salt = make([]byte, 32)
