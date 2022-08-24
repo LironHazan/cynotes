@@ -11,6 +11,7 @@ WIP
 
 - Commit - ``cynotes commit /path/to/file``
 Will generate an encrypted revision of the current file under /Users/user/.cynotes
+- List - ``cynotes list``
 
 ### Development:
 

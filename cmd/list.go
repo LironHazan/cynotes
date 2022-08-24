@@ -16,5 +16,4 @@ var listCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(listCmd)
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
