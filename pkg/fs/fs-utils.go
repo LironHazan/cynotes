@@ -38,7 +38,7 @@ func getCYNotesPath(uname string) (string, error) {
 
 func isPathExists(path string) bool {
 	if _, err := os.Stat(path); err == nil || os.IsExist(err) {
-		fmt.Printf(" Base docs folder: %s\n", path)
+		fmt.Printf("Base docs folder: %s\n", path)
 		return true
 	}
 	return false
