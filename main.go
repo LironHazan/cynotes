@@ -2,17 +2,29 @@ package main
 
 import (
 	"cynotes/cmd"
-	fsutils "cynotes/pkg/fs"
+	cynotes "cynotes/pkg"
 	promptUiUtils "cynotes/pkg/ui"
 	"fmt"
 )
 
 func main() {
-	err := fsutils.InitCYNotes()
+	ascii := promptUiUtils.CynotsArt()
+	fmt.Printf(ascii)
+
+	user, err := promptUiUtils.PromptGitClient("Enter git username")
 	if err != nil {
 		return
 	}
-	ascii := promptUiUtils.CynotsArt()
-	fmt.Printf(ascii)
+
+	repo, err := promptUiUtils.PromptGitClient("Enter cynotes repo")
+	if err != nil {
+		return
+	}
+
+	err = cynotes.InitCYNotes(user, repo)
+	if err != nil {
+		return
+	}
+
 	cmd.Execute()
 }

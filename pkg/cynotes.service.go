@@ -3,12 +3,41 @@ package cynotes
 import (
 	cryptoUtils "cynotes/pkg/crypto"
 	fsutils "cynotes/pkg/fs"
+	"cynotes/pkg/git"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 )
+
+func InitCYNotes(user string, repo string) error {
+	// Greet
+	uname, err := fsutils.GetUserName()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	fmt.Printf("Hey %s\n", uname)
+
+	path, err := fsutils.NormalizeCYNotesPath(uname)
+	localRepoPath := path + "/" + repo
+	fmt.Printf("%s \n", localRepoPath)
+	if !fsutils.IsPathExists(localRepoPath) {
+		// Create docs base folder
+		err = os.Mkdir(path, 0755)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		if err != nil {
+			return err
+		} else {
+			fmt.Printf("Cloning %s\n", repo)
+			git.Clone(user, repo, path)
+		}
+	}
+	return err
+}
 
 func Commit(filepath string, passphrase string) {
 	filename := fsutils.ExtractFilename(filepath)
@@ -37,7 +66,7 @@ func Commit(filepath string, passphrase string) {
 func List() {
 	// todo: model: notesMap := make(map[string][]string)
 
-	visit := func(path string, di fs.DirEntry, err error) error {
+	visit := func(path string, dir fs.DirEntry, err error) error {
 		fmt.Println(path)
 		return nil
 	}
