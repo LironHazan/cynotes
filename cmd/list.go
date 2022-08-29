@@ -2,6 +2,7 @@ package cmd
 
 import (
 	cynotes "cynotes/pkg"
+	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -10,7 +11,9 @@ var listCmd = &cobra.Command{
 	Short: "list revisions",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		cynotes.List()
+		notes := cynotes.List()
+		fmt.Println(notes)
+
 	},
 }
 
