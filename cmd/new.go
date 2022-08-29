@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	cynotes "cynotes/pkg"
 	promptUiUtils "cynotes/pkg/ui"
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"log"
 )
 
 var newCmd = &cobra.Command{
@@ -12,8 +12,12 @@ var newCmd = &cobra.Command{
 	Short: "Add a new note",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		filename, _ := promptUiUtils.PromptFileName()
-		fmt.Printf("%s \n", filename)
+		note, _ := promptUiUtils.PromptFileName()
+		err := cynotes.New(note)
+		if err != nil {
+			log.Printf("error creating new note")
+			return
+		}
 	},
 }
 

@@ -110,3 +110,25 @@ func PromptGitClient(label string) (string, error) {
 	}
 	return result, err
 }
+
+func BasicPrompt(message string) (string, error) {
+	prompt := promptui.Prompt{
+		Label: message,
+	}
+	return prompt.Run()
+}
+
+func BasicPromptSelections(message string, items []string) (string, error) {
+	prompt := promptui.Select{
+		Label: message,
+		Items: items,
+	}
+
+	_, result, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+	}
+
+	return result, err
+}

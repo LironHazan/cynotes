@@ -1,6 +1,7 @@
 package fsutils
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -15,6 +16,29 @@ import (
 		replace string concatenation with path lib
 		choose either fmt or log instead of both
 */
+
+type InitData struct {
+	RepoName string
+}
+
+func CreateInitFile(repo string) {
+	path, _ := GetCYNotesPath()
+	data := InitData{RepoName: repo}
+	file, _ := json.MarshalIndent(data, "", " ")
+	_ = os.WriteFile(path+"/.init.json", file, 0644)
+}
+
+func GetRepoName() string {
+	path, _ := GetCYNotesPath()
+	name := path + "/.init.json"
+	file, _ := os.ReadFile(name)
+
+	data := InitData{}
+
+	_ = json.Unmarshal([]byte(file), &data)
+	fmt.Println("RepoName: ", data.RepoName)
+	return data.RepoName
+}
 
 func GetUserName() (string, error) {
 	_user, err := user.Current()

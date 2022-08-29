@@ -6,7 +6,7 @@ import (
 	"os/exec"
 )
 
-func ViEdit(filepath string) {
+func ViEdit(filepath string) error {
 	cmd := exec.Command("vi", filepath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -14,12 +14,14 @@ func ViEdit(filepath string) {
 
 	err := cmd.Start()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	err = cmd.Wait()
 	if err != nil {
 		log.Printf("Error while editing. Error: %v\n", err)
-	} else {
-		log.Printf("Successfully edited.")
+		return err
 	}
+	log.Printf("Successfully edited.")
+	return nil
+
 }
