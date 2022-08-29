@@ -18,6 +18,17 @@ func Clone(user string, repo string, target string) error {
 	return nil
 }
 
+func Browse(target string) error {
+	cmd := exec.Command("gh", "browse")
+	cmd.Dir = target
+	out, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	fmt.Printf(string(out))
+	return nil
+}
+
 func Add(target string, file string) {
 	cmd := exec.Command("git", "add", file)
 	cmd.Dir = target

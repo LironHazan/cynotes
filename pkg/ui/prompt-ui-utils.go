@@ -39,7 +39,6 @@ func PromptPasswdInput() (string, error) {
 		return "", nil
 	}
 
-	fmt.Printf("Your password is %q\n", result)
 	return result, err
 }
 
