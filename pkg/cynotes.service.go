@@ -57,9 +57,7 @@ func List() {
 }
 
 func New(name string) error {
-	repo := fsutils.GetRepoName()
-	path, _ := fsutils.GetCYNotesPath()
-	notesDir := path + "/" + repo
+	notesDir := fsutils.GetWorkingRepoDir()
 
 	// Create new note folder under the repo
 	err := os.Mkdir(notesDir+"/"+name, 0755)
@@ -119,6 +117,57 @@ func New(name string) error {
 		git.Push(notesDir)
 	}
 	return nil
+}
+
+func EditNote(name string) {
+	// fetch latest revision
+	// copy content to tmpFile
+	// edit tmpFile
+	// save + push new revision
+	notesDir := fsutils.GetWorkingRepoDir()
+	noteDir := notesDir + "/" + name
+	log.Printf(noteDir)
+	var maxModTime int64 = 0
+	note := ""
+	visit := func(path string, dir fs.DirEntry, err error) error {
+		if !dir.IsDir() {
+			log.Printf("filename %s", dir.Name())
+			log.Printf("%s", note)
+			note = path
+			info, err := dir.Info()
+			if err != nil {
+				return err
+			}
+			if maxModTime == 0 {
+				maxModTime = info.ModTime().Unix()
+				return nil
+			}
+			if maxModTime < info.ModTime().Unix() {
+				maxModTime = info.ModTime().Unix()
+				note = path
+			}
+
+		}
+
+		return nil
+	}
+
+	err := filepath.WalkDir(noteDir, visit)
+	log.Printf("file to edit: %s", note)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// copy note
+
+}
+
+func Browse() {
+	notesDir := fsutils.GetWorkingRepoDir()
+	err := git.Browse(notesDir)
+	if err != nil {
+		return
+	}
 }
 
 // todo - implement view file

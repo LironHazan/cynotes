@@ -40,6 +40,12 @@ func GetRepoName() string {
 	return data.RepoName
 }
 
+func GetWorkingRepoDir() string {
+	repo := GetRepoName()
+	path, _ := GetCYNotesPath()
+	return path + "/" + repo
+}
+
 func GetUserName() (string, error) {
 	_user, err := user.Current()
 	return _user.Username, err
