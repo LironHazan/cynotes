@@ -8,10 +8,12 @@ import (
 	promptUiUtils "cynotes/pkg/ui"
 	"encoding/hex"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func renameTmpFile(tmpFilePath string, noteDir string) (string, error) {
@@ -70,11 +72,12 @@ func InitCYNotes(user string, repo string) error {
 	return nil
 }
 
-func List() {
-	// todo: model: notesMap := make(map[string][]string)
-
+func List() []string {
+	notes := []string{}
 	visit := func(path string, dir fs.DirEntry, err error) error {
-		fmt.Println(path)
+		if !strings.Contains(path, ".git") && !slices.Contains(notes, path) {
+			notes = append(notes, "\n"+path)
+		}
 		return nil
 	}
 
@@ -83,6 +86,7 @@ func List() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	return notes
 }
 
 func New(name string) error {
