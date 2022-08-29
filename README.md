@@ -9,7 +9,7 @@ WIP
 
 ### Commands: 
 
-- Commit - ``cynotes commit /path/to/file``
+- New - ``Add a new secrete note``
 Will generate an encrypted revision of the current file under /Users/user/.cynotes
 - List - ``cynotes list``
 
@@ -18,3 +18,4 @@ Will generate an encrypted revision of the current file under /Users/user/.cynot
 Add new command template: ``cobra-cli add [command]``
 
 
+Took inspiration from [Eureka](https://github.com/simeg/eureka)

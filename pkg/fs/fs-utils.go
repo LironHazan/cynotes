@@ -1,6 +1,7 @@
 package fsutils
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -16,7 +17,30 @@ import (
 		choose either fmt or log instead of both
 */
 
-func getUserName() (string, error) {
+type InitData struct {
+	RepoName string
+}
+
+func CreateInitFile(repo string) {
+	path, _ := GetCYNotesPath()
+	data := InitData{RepoName: repo}
+	file, _ := json.MarshalIndent(data, "", " ")
+	_ = os.WriteFile(path+"/.init.json", file, 0644)
+}
+
+func GetRepoName() string {
+	path, _ := GetCYNotesPath()
+	name := path + "/.init.json"
+	file, _ := os.ReadFile(name)
+
+	data := InitData{}
+
+	_ = json.Unmarshal([]byte(file), &data)
+	fmt.Println("RepoName: ", data.RepoName)
+	return data.RepoName
+}
+
+func GetUserName() (string, error) {
 	_user, err := user.Current()
 	return _user.Username, err
 }
@@ -24,7 +48,7 @@ func getUserName() (string, error) {
 // Assuming there's only one person/user which uses the computer (pc)
 // Following protects a case where the profile/userpath name isn't
 // perfectly matching the os username e.g. os_user == liron but userpath == liron_1
-func getCYNotesPath(uname string) (string, error) {
+func NormalizeCYNotesPath(uname string) (string, error) {
 	files, err := os.ReadDir("/Users")
 	var name string
 	for _, file := range files {
@@ -36,7 +60,7 @@ func getCYNotesPath(uname string) (string, error) {
 	return "/Users/" + name + "/.cynotes", err
 }
 
-func isPathExists(path string) bool {
+func IsPathExists(path string) bool {
 	if _, err := os.Stat(path); err == nil || os.IsExist(err) {
 		fmt.Printf("Base docs folder: %s\n", path)
 		return true
@@ -44,33 +68,14 @@ func isPathExists(path string) bool {
 	return false
 }
 
-func InitCYNotes() error {
-	// Greet
-	uname, err := getUserName()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	fmt.Printf("Hey %s\n", uname)
-
-	path, err := getCYNotesPath(uname)
-	if !isPathExists(path) {
-		// Create docs base folder
-		err = os.Mkdir(path, 0755)
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-	}
-	return err
-}
-
 func GetCYNotesPath() (string, error) {
-	uname, err := getUserName()
-	path, err := getCYNotesPath(uname)
+	uname, err := GetUserName()
+	path, err := NormalizeCYNotesPath(uname)
 	return path, err
 }
 
 func CreateFolder(absPath string) {
-	if !isPathExists(absPath) {
+	if !IsPathExists(absPath) {
 		fmt.Printf(" Creating %s \n", absPath)
 		err := os.Mkdir(absPath, 0755)
 		if err != nil {

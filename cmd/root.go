@@ -8,7 +8,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "cynotes",
 	Short: "Welcome to cynotes",
-	Long:  `TBD ascii art`,
+	Long:  ``,
 }
 
 func Execute() {

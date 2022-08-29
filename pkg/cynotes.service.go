@@ -2,42 +2,49 @@ package cynotes
 
 import (
 	cryptoUtils "cynotes/pkg/crypto"
+	"cynotes/pkg/editor"
 	fsutils "cynotes/pkg/fs"
+	"cynotes/pkg/git"
+	promptUiUtils "cynotes/pkg/ui"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 )
 
-func Commit(filepath string, passphrase string) {
-	filename := fsutils.ExtractFilename(filepath)
-	basePath := fsutils.CreateNoteFolder(filename)
-
-	hash := cryptoUtils.GetMD5Hash(filepath)
-	hashStr := hex.EncodeToString(hash[:])
-	commit := basePath + "/" + hashStr
-
-	bytes, err := os.ReadFile(filepath)
+func InitCYNotes(user string, repo string) error {
+	// Greet
+	uname, err := fsutils.GetUserName()
 	if err != nil {
-		fmt.Printf("Failed reading data from file: %s", err)
+		return err
 	}
+	fmt.Printf("Hey %s\n", uname)
 
-	key := []byte(passphrase)
-	ciphertext, err := cryptoUtils.EncryptAES(key, bytes)
-	fmt.Printf("key %s \n", key)
-
-	err = os.WriteFile(commit, ciphertext, 0755)
-	if err != nil { // todo dont panic
-		fmt.Printf("Failed reading data from file: %s", err)
+	path, err := fsutils.NormalizeCYNotesPath(uname)
+	localRepoPath := path + "/" + repo
+	fmt.Printf("%s \n", localRepoPath)
+	if !fsutils.IsPathExists(localRepoPath) {
+		// Create docs base folder
+		err = os.Mkdir(path, 0755)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Cloning %s\n", repo)
+		err := git.Clone(user, repo, path)
+		if err != nil {
+			return err
+		}
+		fsutils.CreateInitFile(repo)
 	}
-
+	return nil
 }
 
 func List() {
 	// todo: model: notesMap := make(map[string][]string)
 
-	visit := func(path string, di fs.DirEntry, err error) error {
+	visit := func(path string, dir fs.DirEntry, err error) error {
 		fmt.Println(path)
 		return nil
 	}
@@ -47,6 +54,71 @@ func List() {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func New(name string) error {
+	repo := fsutils.GetRepoName()
+	path, _ := fsutils.GetCYNotesPath()
+	notesDir := path + "/" + repo
+
+	// Create new note folder under the repo
+	err := os.Mkdir(notesDir+"/"+name, 0755)
+	if err != nil {
+		log.Printf("could not create folder")
+		return err
+	}
+
+	// tmp file
+	tmpFilePath := notesDir + "/" + name + "/tmp"
+	_, err = os.Create(tmpFilePath)
+	if err != nil {
+		log.Printf("could not create tmp file")
+		return err
+	}
+
+	// open file for editing
+	err = editor.ViEdit(tmpFilePath)
+	if err != nil {
+		return err
+	}
+
+	// rename to hash
+	hash := cryptoUtils.GetMD5Hash(tmpFilePath)
+	hashStr := hex.EncodeToString(hash[:])
+	secretNote := notesDir + "/" + name + "/" + hashStr
+	err = os.Rename(tmpFilePath, secretNote)
+	if err != nil {
+		log.Printf("could not rename tmp file")
+		return err
+	}
+
+	// Encrypt
+	log.Printf("Enter passphrase for encrypting note")
+	passphrase, _ := promptUiUtils.PromptPasswdInput()
+
+	bytes, err := os.ReadFile(secretNote)
+	if err != nil {
+		log.Printf("Failed reading data from file: %s", err)
+		return err
+	}
+
+	key := []byte(passphrase)
+	ciphertext, err := cryptoUtils.EncryptAES(key, bytes)
+	fmt.Printf("key %s \n", key)
+
+	err = os.WriteFile(secretNote, ciphertext, 0755)
+	if err != nil {
+		log.Printf("Failed reading data from file: %s", err)
+		return err
+	}
+
+	selection, _ := promptUiUtils.BasicPromptSelections("Do you want to push changes?", []string{"Yes", "No"})
+	if selection == "Yes" {
+		git.Add(notesDir, secretNote)
+		git.Commit(notesDir)
+		git.Push(notesDir)
+	}
+	return nil
 }
 
 // todo - implement view file
