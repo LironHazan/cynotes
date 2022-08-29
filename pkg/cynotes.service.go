@@ -14,6 +14,35 @@ import (
 	"path/filepath"
 )
 
+func renameTmpFile(tmpFilePath string, noteDir string) (string, error) {
+	hash := cryptoUtils.GetMD5Hash(tmpFilePath)
+	hashStr := hex.EncodeToString(hash[:])
+	secretNote := noteDir + "/" + hashStr
+	err := os.Rename(tmpFilePath, secretNote)
+	if err != nil {
+		log.Printf("could not rename tmp file")
+		return "", err
+	}
+	return secretNote, nil
+}
+func push(notesDir string, secretNote string) {
+	selection, _ := promptUiUtils.BasicPromptSelections("Do you want to push the changes?", []string{"Yes", "No"})
+	if selection == "Yes" {
+		git.Add(notesDir, secretNote)
+		git.Commit(notesDir)
+		git.Push(notesDir)
+	}
+}
+func encrypt(passphrase []byte, bytes []byte, secretNote string) error {
+	ciphertext, err := cryptoUtils.EncryptAES(passphrase, bytes)
+	err = os.WriteFile(secretNote, ciphertext, 0755)
+	if err != nil {
+		log.Printf("Failed reading data from file: %s", err)
+		return err
+	}
+	return nil
+}
+
 func InitCYNotes(user string, repo string) error {
 	// Greet
 	uname, err := fsutils.GetUserName()
@@ -81,14 +110,7 @@ func New(name string) error {
 	}
 
 	// rename to hash
-	hash := cryptoUtils.GetMD5Hash(tmpFilePath)
-	hashStr := hex.EncodeToString(hash[:])
-	secretNote := notesDir + "/" + name + "/" + hashStr
-	err = os.Rename(tmpFilePath, secretNote)
-	if err != nil {
-		log.Printf("could not rename tmp file")
-		return err
-	}
+	secretNote, _ := renameTmpFile(tmpFilePath, notesDir+"/"+name)
 
 	// Encrypt
 	log.Printf("Enter passphrase for encrypting note")
@@ -100,30 +122,12 @@ func New(name string) error {
 		return err
 	}
 
-	key := []byte(passphrase)
-	ciphertext, err := cryptoUtils.EncryptAES(key, bytes)
-	fmt.Printf("key %s \n", key)
-
-	err = os.WriteFile(secretNote, ciphertext, 0755)
-	if err != nil {
-		log.Printf("Failed reading data from file: %s", err)
-		return err
-	}
-
-	selection, _ := promptUiUtils.BasicPromptSelections("Do you want to push changes?", []string{"Yes", "No"})
-	if selection == "Yes" {
-		git.Add(notesDir, secretNote)
-		git.Commit(notesDir)
-		git.Push(notesDir)
-	}
+	_ = encrypt([]byte(passphrase), bytes, secretNote)
+	push(notesDir, secretNote)
 	return nil
 }
 
 func EditNote(name string) {
-	// fetch latest revision
-	// copy content to tmpFile
-	// edit tmpFile
-	// save + push new revision
 	notesDir := fsutils.GetWorkingRepoDir()
 	noteDir := notesDir + "/" + name
 	log.Printf(noteDir)
@@ -159,6 +163,24 @@ func EditNote(name string) {
 	}
 
 	// copy note
+	bytes, err := os.ReadFile(note)
+	if err != nil {
+		fmt.Printf("Failed reading data from file: %s", err)
+	}
+
+	passphrase, _ := promptUiUtils.PromptPasswdInput()
+	text, err := cryptoUtils.DecryptAES([]byte(passphrase), bytes)
+
+	tmpFile := noteDir + "/tmp_file"
+	err = os.WriteFile(tmpFile, text, 0755)
+	if err != nil {
+		log.Printf("Failed reading data from file: %s", err)
+	}
+
+	_ = editor.ViEdit(tmpFile)
+	secretNote, _ := renameTmpFile(tmpFile, notesDir+"/"+name)
+	_ = encrypt([]byte(passphrase), bytes, secretNote)
+	push(notesDir+"/"+name, secretNote)
 
 }
 
@@ -169,16 +191,3 @@ func Browse() {
 		return
 	}
 }
-
-// todo - implement view file
-//func Run(passphrase string, filename string) error {
-//	bytes, err := os.ReadFile(filepath)
-//	if err != nil {
-//		fmt.Printf("Failed reading data from file: %s", err)
-//	}
-//
-//	text, err := cryptoUtils.DecryptAES([]byte(passphrase), ciphertext)
-//	s := string(text)
-//	fmt.Printf("s %s\n ", s)
-//	return err
-//}
