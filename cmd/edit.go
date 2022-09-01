@@ -11,11 +11,11 @@ var editCmd = &cobra.Command{
 	Short: "Edit note",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		name, err := promptUiUtils.BasicPrompt("Enter a note name")
+		name, err := promptUiUtils.BasicPrompt("Enter the note name:")
 		if err != nil {
 			return
 		}
-		cynotes.EditNote(name)
+		cynotes.Edit(name)
 	},
 }
 

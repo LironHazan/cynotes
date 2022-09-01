@@ -131,7 +131,7 @@ func New(name string) error {
 	return nil
 }
 
-func EditNote(name string) {
+func Edit(name string) {
 	notesDir := fsutils.GetWorkingRepoDir()
 	noteDir := notesDir + "/" + name
 	log.Printf(noteDir)
