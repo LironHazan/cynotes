@@ -218,11 +218,8 @@ func Edit(name string) {
 	_ = editor.ViEdit(tmpFile)
 	secretNote, _ := renameTmpFile(tmpFile, notesDir+"/"+name)
 
-	s, err := os.ReadFile(secretNote)
-	str2 := string(s[:])
-	fmt.Println("secretNote String =", str2)
-
-	_ = encrypt([]byte(passphrase), bytes, secretNote)
+	editedBytes, err := os.ReadFile(secretNote)
+	_ = encrypt([]byte(passphrase), editedBytes, secretNote)
 	push(notesDir+"/"+name, secretNote)
 
 }
