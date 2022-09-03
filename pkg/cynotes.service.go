@@ -77,11 +77,13 @@ func InitCYNotes(user string, repo string) error {
 
 	path, err := fsutils.NormalizeCYNotesPath(uname)
 	localRepoPath := path + "/" + repo
-	fmt.Printf("%s \n", localRepoPath)
+	fmt.Printf("local repo path: %s \n", localRepoPath)
 	if !fsutils.IsPathExists(localRepoPath) {
 		// Create docs base folder
+		fmt.Printf("Creating directory: %s \n", path)
 		err = os.Mkdir(path, 0755)
 		if err != nil {
+			fmt.Printf("Error: %s \n", err)
 			return err
 		}
 		fmt.Printf("Cloning %s\n", repo)
