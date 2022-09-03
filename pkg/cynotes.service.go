@@ -16,6 +16,12 @@ import (
 	"strings"
 )
 
+type MaxAttemptsError struct{}
+
+func (m *MaxAttemptsError) Error() string {
+	return "You have reached the maximum attempts, Bye!"
+}
+
 func renameTmpFile(tmpFilePath string, noteDir string) (string, error) {
 	hash := cryptoUtils.GetMD5Hash(tmpFilePath)
 	hashStr := hex.EncodeToString(hash[:])
@@ -43,6 +49,22 @@ func encrypt(passphrase []byte, bytes []byte, secretNote string) error {
 		return err
 	}
 	return nil
+}
+func decrypt(attempts uint8, cyBytes []byte) ([]byte, string, error) {
+	var bytes []byte
+	var err error
+	var passphrase string
+	if attempts > 0 {
+		passphrase, _ = promptUiUtils.PromptPasswdInput()
+		bytes, err = cryptoUtils.DecryptAES([]byte(passphrase), cyBytes)
+		if err != nil {
+			attempts--
+			log.Printf("Wrong passphrase, try again")
+			return decrypt(attempts, cyBytes)
+		}
+		return bytes, passphrase, nil
+	}
+	return nil, "", &MaxAttemptsError{}
 }
 
 func InitCYNotes(user string, repo string) error {
@@ -167,16 +189,20 @@ func Edit(name string) {
 	}
 
 	// copy note
-	bytes, err := os.ReadFile(note)
+	cyBytes, err := os.ReadFile(note)
 	if err != nil {
 		fmt.Printf("Failed reading data from file: %s", err)
 	}
 
-	passphrase, _ := promptUiUtils.PromptPasswdInput()
-	text, err := cryptoUtils.DecryptAES([]byte(passphrase), bytes)
+	// try to decrypt encrypted note by user passwd attempts
+	bytes, passphrase, err := decrypt(3, cyBytes)
+	if err != nil {
+		log.Printf("Error: %s", err)
+		os.Exit(1)
+	}
 
 	tmpFile := noteDir + "/tmp_file"
-	err = os.WriteFile(tmpFile, text, 0755)
+	err = os.WriteFile(tmpFile, bytes, 0755)
 	if err != nil {
 		log.Printf("Failed reading data from file: %s", err)
 	}
