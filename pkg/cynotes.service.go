@@ -77,11 +77,13 @@ func InitCYNotes(user string, repo string) error {
 
 	path, err := fsutils.NormalizeCYNotesPath(uname)
 	localRepoPath := path + "/" + repo
-	fmt.Printf("%s \n", localRepoPath)
+	fmt.Printf("local repo path: %s \n", localRepoPath)
 	if !fsutils.IsPathExists(localRepoPath) {
 		// Create docs base folder
+		fmt.Printf("Creating directory: %s \n", path)
 		err = os.Mkdir(path, 0755)
 		if err != nil {
+			fmt.Printf("Error: %s \n", err)
 			return err
 		}
 		fmt.Printf("Cloning %s\n", repo)
@@ -154,27 +156,24 @@ func New(name string) error {
 }
 
 func Edit(name string) {
+
 	notesDir := fsutils.GetWorkingRepoDir()
 	noteDir := notesDir + "/" + name
 	log.Printf(noteDir)
+
+	_note := ""
 	var maxModTime int64 = 0
-	note := ""
+
 	visit := func(path string, dir fs.DirEntry, err error) error {
 		if !dir.IsDir() {
-			log.Printf("filename %s", dir.Name())
-			log.Printf("%s", note)
-			note = path
 			info, err := dir.Info()
 			if err != nil {
 				return err
 			}
-			if maxModTime == 0 {
+
+			if maxModTime < info.ModTime().Unix() { // grab the latest update
 				maxModTime = info.ModTime().Unix()
-				return nil
-			}
-			if maxModTime < info.ModTime().Unix() {
-				maxModTime = info.ModTime().Unix()
-				note = path
+				_note = path
 			}
 
 		}
@@ -183,19 +182,24 @@ func Edit(name string) {
 	}
 
 	err := filepath.WalkDir(noteDir, visit)
-	log.Printf("file to edit: %s", note)
+	log.Printf("note to edit: %s", _note)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// copy note
-	cyBytes, err := os.ReadFile(note)
+	cyBytes, err := os.ReadFile(_note)
 	if err != nil {
 		fmt.Printf("Failed reading data from file: %s", err)
 	}
 
+	if len(cyBytes) == 0 {
+		log.Printf("The file seems to be empty")
+		os.Exit(1)
+	}
 	// try to decrypt encrypted note by user passwd attempts
 	bytes, passphrase, err := decrypt(3, cyBytes)
+
 	if err != nil {
 		log.Printf("Error: %s", err)
 		os.Exit(1)
@@ -207,9 +211,15 @@ func Edit(name string) {
 		log.Printf("Failed reading data from file: %s", err)
 	}
 
+	foo, err := os.ReadFile(tmpFile)
+	str1 := string(foo[:])
+	fmt.Println("tmpFile String =", str1)
+
 	_ = editor.ViEdit(tmpFile)
 	secretNote, _ := renameTmpFile(tmpFile, notesDir+"/"+name)
-	_ = encrypt([]byte(passphrase), bytes, secretNote)
+
+	editedBytes, err := os.ReadFile(secretNote)
+	_ = encrypt([]byte(passphrase), editedBytes, secretNote)
 	push(notesDir+"/"+name, secretNote)
 
 }
@@ -220,4 +230,24 @@ func Browse() {
 	if err != nil {
 		return
 	}
+}
+
+func Read(note string) {
+	var revs []string
+	visit := func(path string, dir fs.DirEntry, err error) error {
+		if !dir.IsDir() {
+			revs = append(revs, path)
+		}
+		return nil
+	}
+
+	path := fsutils.GetWorkingRepoDir()
+	err := filepath.WalkDir(path+"/"+note, visit)
+	if err != nil {
+		return
+	}
+	selection, _ := promptUiUtils.BasicPromptSelections("Select a revision to read", revs)
+	cyBytes, err := os.ReadFile(selection)
+	bytes, _, err := decrypt(3, cyBytes)
+	log.Print(string(bytes[:]))
 }

@@ -12,6 +12,7 @@ WIP
 - New - ``Add a new secrete note``
 Will generate an encrypted revision of the current file under /Users/user/.cynotes
 - Edit - ``cynotes edit`` Edit a selected note.
+- Read - ``cynotes read`` Choose a revision to read.
 - Browse - ``cynotes browse`` Open the repo in the browser
 - List - ``cynotes list``
 
