@@ -5,7 +5,7 @@ WIP
 ### Installation:
 (TBD using goreleaser)
 - clone the repo 
-- ``go install``
+- ``make install``
 
 ### Commands: 
 
