@@ -1,4 +1,4 @@
-package cmd
+package options
 
 import (
 	cynotes "cynotes/pkg"
