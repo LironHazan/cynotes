@@ -211,10 +211,6 @@ func Edit(name string) {
 		log.Printf("Failed reading data from file: %s", err)
 	}
 
-	foo, err := os.ReadFile(tmpFile)
-	str1 := string(foo[:])
-	fmt.Println("tmpFile String =", str1)
-
 	_ = editor.ViEdit(tmpFile)
 	secretNote, _ := renameTmpFile(tmpFile, notesDir+"/"+name)
 
