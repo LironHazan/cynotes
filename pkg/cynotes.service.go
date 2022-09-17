@@ -41,6 +41,19 @@ func push(notesDir string, secretNote string) {
 		git.Push(notesDir)
 	}
 }
+func asyncEncrypt(passphrase []byte, bytes []byte, secretNote string) chan interface{} {
+	ch := make(chan interface{}, 1)
+	go func() {
+		defer close(ch)
+		err := encrypt(passphrase, bytes, secretNote)
+		if err != nil {
+			ch <- err
+		} else {
+			ch <- "done"
+		}
+	}()
+	return ch
+}
 func encrypt(passphrase []byte, bytes []byte, secretNote string) error {
 	ciphertext, err := cryptoUtils.EncryptAES(passphrase, bytes)
 	err = os.WriteFile(secretNote, ciphertext, 0755)
@@ -150,8 +163,14 @@ func New(name string) error {
 		return err
 	}
 
-	_ = encrypt([]byte(passphrase), bytes, secretNote)
-	push(notesDir, secretNote)
+	// there's no actual sense for offloading here as the next op should wait for encryption to end..
+	result := <-asyncEncrypt([]byte(passphrase), bytes, secretNote)
+	switch v := result.(type) {
+	case string:
+		push(notesDir, secretNote)
+	case error:
+		log.Fatal(v)
+	}
 	return nil
 }
 
@@ -246,4 +265,9 @@ func Read(note string) {
 	cyBytes, err := os.ReadFile(selection)
 	bytes, _, err := decrypt(3, cyBytes)
 	log.Print(string(bytes[:]))
+}
+
+func Verify(note string) {
+	// concurrently try to decrypt all revisions of a selected file and print out invalid revisions
+	// note = { filename string, valid bool }
 }
