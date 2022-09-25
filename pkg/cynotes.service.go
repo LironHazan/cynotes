@@ -56,18 +56,18 @@ func (cy Cynotes) encrypt(passphrase []byte, bytes []byte, secretNote string) er
 	return nil
 }
 func (cy Cynotes) decrypt(attempts uint8, cyBytes []byte) ([]byte, string, error) {
-	var bytes []byte
-	var err error
+	var _bytes []byte
 	var passphrase string
 	if attempts > 0 {
 		passphrase, _ = promptUiUtils.PromptPasswdInput()
-		bytes = cy.fpcy.DecryptAES([]byte(passphrase), cyBytes).RightOrEmpty()
-		if err != nil {
+		bytes, isRight := cy.fpcy.DecryptAES([]byte(passphrase), cyBytes).Right()
+		if !isRight {
 			attempts--
 			log.Printf("Wrong passphrase, try again")
 			return cy.decrypt(attempts, cyBytes)
 		}
-		return bytes, passphrase, nil
+		_bytes = bytes
+		return _bytes, passphrase, nil
 	}
 	return nil, "", &MaxAttemptsError{}
 }
