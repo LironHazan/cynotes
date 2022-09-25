@@ -5,17 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/manifoldco/promptui"
+	"github.com/samber/lo"
 	"io/fs"
 	"path/filepath"
 )
 
 func PromptPasswdInput() (string, error) {
 	validate := func(input string) error {
-		if len(input) < 8 {
-			// Todo: add passwd pattern validation
-			return errors.New("password must have more than 8 characters")
-		}
-		return nil
+		return lo.Ternary[error](len(input) < 8, errors.New("password must have more than 8 characters"), nil)
 	}
 
 	templates := &promptui.PromptTemplates{

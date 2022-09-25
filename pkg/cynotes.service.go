@@ -8,6 +8,7 @@ import (
 	promptUiUtils "cynotes/pkg/ui"
 	"encoding/hex"
 	"fmt"
+	_ "github.com/samber/mo"
 	"golang.org/x/exp/slices"
 	"io/fs"
 	"log"
@@ -22,8 +23,12 @@ func (m *MaxAttemptsError) Error() string {
 	return "You have reached the maximum attempts, Bye!"
 }
 
-func renameTmpFile(tmpFilePath string, noteDir string) (string, error) {
-	hash := cryptoUtils.GetMD5Hash(tmpFilePath)
+type Cynotes struct {
+	fpcy cryptoUtils.FpCyUtil
+}
+
+func (cy Cynotes) renameTmpFile(tmpFilePath string, noteDir string) (string, error) {
+	hash := cy.fpcy.GetMD5Hash(tmpFilePath).OrEmpty()
 	hashStr := hex.EncodeToString(hash[:])
 	secretNote := noteDir + "/" + hashStr
 	err := os.Rename(tmpFilePath, secretNote)
@@ -33,7 +38,7 @@ func renameTmpFile(tmpFilePath string, noteDir string) (string, error) {
 	}
 	return secretNote, nil
 }
-func push(notesDir string, secretNote string) {
+func (cy Cynotes) push(notesDir string, secretNote string) {
 	selection, _ := promptUiUtils.BasicPromptSelections("Do you want to push the changes?", []string{"Yes", "No"})
 	if selection == "Yes" {
 		git.Add(notesDir, secretNote)
@@ -41,31 +46,33 @@ func push(notesDir string, secretNote string) {
 		git.Push(notesDir)
 	}
 }
-func encrypt(passphrase []byte, bytes []byte, secretNote string) error {
-	ciphertext, err := cryptoUtils.EncryptAES(passphrase, bytes)
-	err = os.WriteFile(secretNote, ciphertext, 0755)
+func (cy Cynotes) encrypt(passphrase []byte, bytes []byte, secretNote string) error {
+	ciphertext := cy.fpcy.EncryptAES(passphrase, bytes).RightOrEmpty()
+	err := os.WriteFile(secretNote, ciphertext, 0755)
 	if err != nil {
 		log.Printf("Failed reading data from file: %s", err)
 		return err
 	}
 	return nil
 }
-func decrypt(attempts uint8, cyBytes []byte) ([]byte, string, error) {
+func (cy Cynotes) decrypt(attempts uint8, cyBytes []byte) ([]byte, string, error) {
 	var bytes []byte
 	var err error
 	var passphrase string
 	if attempts > 0 {
 		passphrase, _ = promptUiUtils.PromptPasswdInput()
-		bytes, err = cryptoUtils.DecryptAES([]byte(passphrase), cyBytes)
+		bytes = cy.fpcy.DecryptAES([]byte(passphrase), cyBytes).RightOrEmpty()
 		if err != nil {
 			attempts--
 			log.Printf("Wrong passphrase, try again")
-			return decrypt(attempts, cyBytes)
+			return cy.decrypt(attempts, cyBytes)
 		}
 		return bytes, passphrase, nil
 	}
 	return nil, "", &MaxAttemptsError{}
 }
+
+// External API
 
 func InitCYNotes(user string, repo string) error {
 	// Greet
@@ -115,7 +122,7 @@ func List() []string {
 
 func New(name string) error {
 	notesDir := fsutils.GetWorkingRepoDir()
-
+	cy := Cynotes{}
 	// Create new note folder under the repo
 	err := os.Mkdir(notesDir+"/"+name, 0755)
 	if err != nil {
@@ -138,7 +145,7 @@ func New(name string) error {
 	}
 
 	// rename to hash
-	secretNote, _ := renameTmpFile(tmpFilePath, notesDir+"/"+name)
+	secretNote, _ := cy.renameTmpFile(tmpFilePath, notesDir+"/"+name)
 
 	// Encrypt
 	log.Printf("Enter passphrase for encrypting note")
@@ -150,13 +157,13 @@ func New(name string) error {
 		return err
 	}
 
-	_ = encrypt([]byte(passphrase), bytes, secretNote)
-	push(notesDir, secretNote)
+	_ = cy.encrypt([]byte(passphrase), bytes, secretNote)
+	cy.push(notesDir, secretNote)
 	return nil
 }
 
 func Edit(name string) {
-
+	cy := Cynotes{}
 	notesDir := fsutils.GetWorkingRepoDir()
 	noteDir := notesDir + "/" + name
 	log.Printf(noteDir)
@@ -198,7 +205,7 @@ func Edit(name string) {
 		os.Exit(1)
 	}
 	// try to decrypt encrypted note by user passwd attempts
-	bytes, passphrase, err := decrypt(3, cyBytes)
+	bytes, passphrase, err := cy.decrypt(3, cyBytes)
 
 	if err != nil {
 		log.Printf("Error: %s", err)
@@ -212,11 +219,11 @@ func Edit(name string) {
 	}
 
 	_ = editor.ViEdit(tmpFile)
-	secretNote, _ := renameTmpFile(tmpFile, notesDir+"/"+name)
+	secretNote, _ := cy.renameTmpFile(tmpFile, notesDir+"/"+name)
 
 	editedBytes, err := os.ReadFile(secretNote)
-	_ = encrypt([]byte(passphrase), editedBytes, secretNote)
-	push(notesDir+"/"+name, secretNote)
+	_ = cy.encrypt([]byte(passphrase), editedBytes, secretNote)
+	cy.push(notesDir+"/"+name, secretNote)
 
 }
 
@@ -224,6 +231,7 @@ func Browse() {
 	notesDir := fsutils.GetWorkingRepoDir()
 	err := git.Browse(notesDir)
 	if err != nil {
+		log.Printf("Failed browsing to repo: %s", err)
 		return
 	}
 }
@@ -244,6 +252,6 @@ func Read(note string) {
 	}
 	selection, _ := promptUiUtils.BasicPromptSelections("Select a revision to read", revs)
 	cyBytes, err := os.ReadFile(selection)
-	bytes, _, err := decrypt(3, cyBytes)
+	bytes, _, err := Cynotes{}.decrypt(3, cyBytes)
 	log.Print(string(bytes[:]))
 }

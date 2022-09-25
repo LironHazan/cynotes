@@ -5,19 +5,41 @@ import (
 	"crypto/cipher"
 	"crypto/md5"
 	"crypto/rand"
-	"fmt"
+	"github.com/samber/mo"
 	"golang.org/x/crypto/scrypt"
 	"os"
 )
 
-func GetMD5Hash(filepath string) [16]byte {
-	data, _ := os.ReadFile(filepath)
-	hash := md5.Sum(data)
-	fmt.Printf("%x", hash)
-	return hash
+// Functional API --------
+
+type FpCyUtil struct{}
+type CyFn func([]byte, []byte) ([]byte, error)
+
+func eitherCyOp(key, data []byte, fn CyFn) mo.Either[error, []byte] {
+	_fn := func() ([]byte, error) {
+		return fn(key, data)
+	}
+	return mo.Try(_fn).ToEither()
 }
 
-func EncryptAES(key, data []byte) ([]byte, error) {
+// todo: replace with sha256
+func (r FpCyUtil) GetMD5Hash(filepath string) mo.Result[[16]byte] {
+	data, _ := os.ReadFile(filepath)
+	hash := md5.Sum(data)
+	return mo.Ok(hash)
+}
+
+func (r FpCyUtil) EncryptAES(key, data []byte) mo.Either[error, []byte] {
+	return eitherCyOp(key, data, encryptAES)
+}
+
+func (r FpCyUtil) DecryptAES(key, data []byte) mo.Either[error, []byte] {
+	return eitherCyOp(key, data, decryptAES)
+}
+
+// Private ---------
+
+func encryptAES(key, data []byte) ([]byte, error) {
 	key, salt, err := DeriveKey(key, nil)
 	if err != nil {
 		return nil, err
@@ -44,7 +66,7 @@ func EncryptAES(key, data []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func DecryptAES(key, data []byte) ([]byte, error) {
+func decryptAES(key, data []byte) ([]byte, error) {
 	salt, data := data[len(data)-32:], data[:len(data)-32]
 
 	key, _, err := DeriveKey(key, salt)
