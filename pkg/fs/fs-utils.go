@@ -3,7 +3,7 @@ package fsutils
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/samber/lo"
 	"os"
 	"os/user"
 	"strings"
@@ -67,38 +67,14 @@ func NormalizeCYNotesPath(uname string) (string, error) {
 }
 
 func IsPathExists(path string) bool {
-	if _, err := os.Stat(path); err == nil || os.IsExist(err) {
-		return true
-	}
-	return false
+	_, err := os.Stat(path)
+	return lo.Ternary[bool](err == nil || os.IsExist(err), true, false)
 }
 
 func GetCYNotesPath() (string, error) {
 	uname, err := GetUserName()
 	path, err := NormalizeCYNotesPath(uname)
 	return path, err
-}
-
-func CreateFolder(absPath string) {
-	if !IsPathExists(absPath) {
-		fmt.Printf(" Creating %s \n", absPath)
-		err := os.Mkdir(absPath, 0755)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}
-
-func CreateNoteFolder(filename string) string {
-	path, _ := GetCYNotesPath()
-	var fPath = path + "/" + filename
-	CreateFolder(fPath)
-	return fPath
-}
-
-func ModTimeUnix(filename string) (int64, error) {
-	file, err := os.Stat(filename)
-	return file.ModTime().Unix(), err
 }
 
 func ExtractFilename(filepath string) string {
