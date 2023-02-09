@@ -5,8 +5,9 @@ import (
 	"crypto/cipher"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"github.com/samber/mo"
-	"golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/pbkdf2"
 	"os"
 )
 
@@ -40,10 +41,7 @@ func (r FpCyUtil) DecryptAES(key, data []byte) mo.Either[error, []byte] {
 // Private ---------
 
 func encryptAES(key, data []byte) ([]byte, error) {
-	key, salt, err := DeriveKey(key, nil)
-	if err != nil {
-		return nil, err
-	}
+	key, salt := DeriveKey(key, nil)
 
 	blockCipher, err := aes.NewCipher(key)
 	if err != nil {
@@ -69,10 +67,7 @@ func encryptAES(key, data []byte) ([]byte, error) {
 func decryptAES(key, data []byte) ([]byte, error) {
 	salt, data := data[len(data)-32:], data[:len(data)-32]
 
-	key, _, err := DeriveKey(key, salt)
-	if err != nil {
-		return nil, err
-	}
+	key, salt = DeriveKey(key, salt)
 
 	blockCipher, err := aes.NewCipher(key)
 	if err != nil {
@@ -94,20 +89,12 @@ func decryptAES(key, data []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-// DeriveKey key derivation function
-// todo: replace with something like https://pkg.go.dev/golang.org/x/crypto/hkdf
-func DeriveKey(password, salt []byte) ([]byte, []byte, error) {
+func DeriveKey(passphrase []byte, salt []byte) ([]byte, []byte) {
 	if salt == nil {
 		salt = make([]byte, 32)
 		if _, err := rand.Read(salt); err != nil {
-			return nil, nil, err
+			return nil, nil
 		}
 	}
-
-	key, err := scrypt.Key(password, salt, 1048576, 8, 1, 32)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return key, salt, nil
+	return pbkdf2.Key(passphrase, salt, 1000, 32, sha256.New), salt
 }
